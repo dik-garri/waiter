@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Официант — симулятор ресторана</title>
+  <meta name="description" content="2D-игра: встречай гостей, принимай заказы, носи блюда, убирай столы и собирай чаевые.">
+  <meta name="theme-color" content="#1b1410">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <div class="stat"><span class="lbl">День</span><b id="hudDay">1</b></div>
+      <div class="stat"><span>🕐</span><b id="hudClock">12:00</b></div>
+      <div class="stat money">
+        <span>💰</span><b id="hudMoney">$0</b>
+        <div class="goal"><div class="bar"><i id="hudGoalBar"></i></div><small id="hudGoal">цель $0</small></div>
+      </div>
+      <div class="stat" title="Ушли недовольными"><span>😡</span><b id="hudAngry">0</b></div>
+      <div class="hands" id="hudHands" title="Что в руках"></div>
+      <div class="btns">
+        <button id="btnSound" title="Звук">🔊</button>
+        <button id="btnPause" title="Пауза (Esc)">⏸</button>
+      </div>
+    </header>
+    <main id="stage">
+      <canvas id="game" aria-label="Игровое поле ресторана"></canvas>
+      <div id="toast"></div>
+      <div id="rotate">📱 Поверни телефон горизонтально — так удобнее играть</div>
+    </main>
+    <footer id="hint">Загрузка…</footer>
+    <div id="overlay" class="overlay"></div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
