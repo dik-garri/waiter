@@ -43,8 +43,19 @@
   const QOFF = { 1: [0], 2: [-14, 14], 3: [-26, 0, 26], 4: [-39, -13, 13, 39] };
   const SEAT_ORDER = { 1: [0], 2: [0, 2], 3: [0, 2, 1], 4: [0, 2, 1, 3] };
   const DECAY = { queue: 2.0, arriving: 2.0, following: 0.6, ordering: 2.4, waitingFood: 1.4, dirty: 2.4, bill: 2.8 };
-  const PATIENCE = 1.6;           // общий запас терпения гостей: во сколько раз медленнее падает настроение
   const MAX_QUEUE = 8;            // сколько поручений официант может запомнить
+
+  // Уровни сложности. 4 — исходный темп игры, 1–3 медленнее (вплоть до детского), 5 — быстрее.
+  // patience — во сколько раз медленнее падает настроение гостей, spawn — множитель паузы между гостями,
+  // cook — множитель времени готовки, goal — множитель дневной цели.
+  const DIFFS = [
+    { e: '🧸', name: 'Детский', desc: 'гости очень терпеливые, приходят редко, повар готовит быстро', patience: 4, spawn: 1.8, cook: 0.6, goal: 0.55 },
+    { e: '🙂', name: 'Лёгкий', desc: 'гости терпеливые и приходят не спеша', patience: 2.5, spawn: 1.4, cook: 0.8, goal: 0.75 },
+    { e: '👌', name: 'Обычный', desc: 'спокойный темп для неторопливой игры', patience: 1.6, spawn: 1.15, cook: 0.9, goal: 0.9 },
+    { e: '💪', name: 'Опытный', desc: 'настоящий ресторанный темп', patience: 1, spawn: 1, cook: 1, goal: 1 },
+    { e: '🔥', name: 'Профи', desc: 'гости нетерпеливые, приходят чаще, цель выше', patience: 0.8, spawn: 0.85, cook: 1.1, goal: 1.15 },
+  ];
+  const DEFAULT_DIFF = 3;
 
   const SHIRTS = ['#e76f51', '#2a9d8f', '#e9c46a', '#8ab17d', '#6d597a', '#457b9d', '#f4a261', '#b5838d', '#3d405b', '#ef476f', '#06d6a0', '#118ab2'];
   const SKINS = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac', '#f6d2b5'];
@@ -81,12 +92,22 @@
   function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } }
   let save = loadSave();
 
+  // сложность хранится отдельно от прогресса: «Начать заново» её не сбрасывает
+  const DIFF_KEY = 'waiter-diff';
+  let diffLevel = DEFAULT_DIFF;
+  try { const v = Number(localStorage.getItem(DIFF_KEY)); if (v >= 1 && v <= DIFFS.length) diffLevel = v; } catch (e) { /* ignore */ }
+  const diff = () => DIFFS[diffLevel - 1];
+  function setDiff(v) {
+    diffLevel = v;
+    try { localStorage.setItem(DIFF_KEY, String(v)); } catch (e) { /* ignore */ }
+  }
+
   const lvl = id => save.up[id] || 0;
   const playerSpeed = () => 150 * (1 + 0.15 * lvl('shoes'));
-  const cookMul = () => 1 - 0.2 * lvl('chef');
+  const cookMul = () => (1 - 0.2 * lvl('chef')) * diff().cook;
   const patienceMul = () => 1 - 0.15 * lvl('music');
   const maxHands = () => 2 + lvl('tray');
-  const dayGoal = d => 110 + 65 * (d - 1);
+  const dayGoal = d => Math.round((110 + 65 * (d - 1)) * diff().goal / 5) * 5;
 
   // =====================================================================
   //  Звук (WebAudio, без файлов)
@@ -265,7 +286,7 @@
     paused = false;
     running = true;
     hideOverlay();
-    toast(`☀️ День ${G.day}. Цель — заработать $${dayGoal(G.day)}`);
+    toast(`☀️ День ${G.day} · ${diff().e} ${diff().name}. Цель — заработать $${dayGoal(G.day)}`);
   }
 
   // =====================================================================
@@ -325,7 +346,7 @@
       g.members.forEach((m, k) => { m.tx = 2.5 * TILE + QOFF[g.size][k]; m.ty = sy + (k % 2 ? 3 : -3); });
     });
 
-    const mul = patienceMul() * (1 + 0.06 * (G.day - 1)) / PATIENCE;
+    const mul = patienceMul() * (1 + 0.06 * (G.day - 1)) / diff().patience;
     const followSpeed = playerSpeed() * 1.1;
 
     for (const g of G.groups) {
@@ -722,7 +743,7 @@
     if (G.spawnTimer <= 0) {
       spawnGroup();
       const f = Math.pow(0.9, G.day - 1);
-      G.spawnTimer = rand(Math.max(4, 11 * f), Math.max(6.5, 16 * f));
+      G.spawnTimer = rand(Math.max(4, 11 * f), Math.max(6.5, 16 * f)) * diff().spawn;
     }
   }
 
@@ -1433,6 +1454,22 @@
       <div><kbd>Esc</kbd> — пауза</div>
     </div>`;
 
+  function diffPicker() {
+    const d = diff();
+    return `
+      <div class="diff">
+        <div class="diff-title">Сложность</div>
+        <div class="diff-row">${DIFFS.map((x, i) => `<button data-diff="${i + 1}" class="${i + 1 === diffLevel ? 'on' : ''}" title="${x.name}"><span>${x.e}</span>${i + 1}</button>`).join('')}</div>
+        <div class="diff-desc"><b>${d.name}</b> — ${d.desc}</div>
+      </div>`;
+  }
+
+  function bindDiffPicker(rerender) {
+    overlay.querySelectorAll('[data-diff]').forEach(b => {
+      b.onclick = () => { setDiff(Number(b.dataset.diff)); Sound.unlock(); Sound.play('ding'); rerender(); };
+    });
+  }
+
   function showStart() {
     running = false;
     const cont = save.day > 1 || save.wallet > 0;
@@ -1442,10 +1479,12 @@
         <h1>Официант</h1>
         <p class="sub">Симулятор ресторана: принимай заказы, носи блюда и собирай чаевые</p>
         ${HOWTO}
+        ${diffPicker()}
         <div class="row"><button class="btn primary" id="bPlay">▶ ${cont ? 'Продолжить — день ' + save.day : 'Начать смену'}</button></div>
         <div class="meta">${cont ? `💰 Кошелёк: $${save.wallet} · <a id="bReset">Начать заново</a>` : 'Прогресс сохраняется в браузере'}</div>
       </div>`);
     $('bPlay').onclick = () => { Sound.unlock(); startDay(); };
+    bindDiffPicker(showStart);
     const reset = $('bReset');
     if (reset) {
       reset.onclick = () => {
@@ -1513,6 +1552,7 @@
         ${nextDish ? `<p class="sub" style="margin:14px 0 0">Новое блюдо в меню: ${nextDish.e} <b>${nextDish.name}</b> — $${nextDish.price}</p>` : ''}
         <h3>Улучшения <span class="wallet">💰 $${save.wallet}</span></h3>
         <div class="shop">${shop}</div>
+        ${diffPicker()}
         <div class="row">
           <button class="btn primary" id="bNext">${r.ok ? '▶ День ' + save.day : '↻ Повторить день ' + save.day}</button>
           <button class="btn" id="bMenu">Меню</button>
@@ -1529,6 +1569,7 @@
         showSummary();
       };
     });
+    bindDiffPicker(showSummary);
     $('bNext').onclick = () => startDay();
     $('bMenu').onclick = () => { G = null; showStart(); };
   }

@@ -223,6 +223,22 @@ kbd {
 }
 .btn.primary:active { box-shadow: 0 2px 0 #b4492f; transform: translateY(3px); }
 
+.diff { margin-bottom: 18px; text-align: center; }
+.diff-title { font-weight: 800; font-size: 15px; margin-bottom: 8px; }
+.diff-row { display: flex; gap: 6px; justify-content: center; }
+.diff-row button {
+  flex: 1; max-width: 72px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  border: 2px solid transparent; border-radius: 12px;
+  padding: 6px 4px; cursor: pointer;
+  background: #f1e3cf; color: var(--ink);
+  font-size: 13px; font-weight: 700;
+}
+.diff-row button span { font-size: 22px; line-height: 1.1; }
+.diff-row button:hover { filter: brightness(1.04); }
+.diff-row button.on { border-color: var(--accent); background: #fff; box-shadow: 0 3px 0 #e2c9ab; }
+.diff-desc { margin-top: 8px; font-size: 14px; color: #5a4535; }
+
 .meta { text-align: center; margin-top: 14px; font-size: 14px; color: #7a6352; }
 .meta a { color: #b4492f; cursor: pointer; }
 
