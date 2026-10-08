@@ -43,6 +43,8 @@
   const QOFF = { 1: [0], 2: [-14, 14], 3: [-26, 0, 26], 4: [-39, -13, 13, 39] };
   const SEAT_ORDER = { 1: [0], 2: [0, 2], 3: [0, 2, 1], 4: [0, 2, 1, 3] };
   const DECAY = { queue: 2.0, arriving: 2.0, following: 0.6, ordering: 2.4, waitingFood: 1.4, dirty: 2.4, bill: 2.8 };
+  const PATIENCE = 1.6;           // общий запас терпения гостей: во сколько раз медленнее падает настроение
+  const MAX_QUEUE = 8;            // сколько поручений официант может запомнить
 
   const SHIRTS = ['#e76f51', '#2a9d8f', '#e9c46a', '#8ab17d', '#6d597a', '#457b9d', '#f4a261', '#b5838d', '#3d405b', '#ef476f', '#06d6a0', '#118ab2'];
   const SKINS = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac', '#f6d2b5'];
@@ -255,7 +257,7 @@
       earned: 0, tips: 0, served: 0, walkouts: 0, goalHit: false, over: false, uid: 1,
     };
     player = {
-      x: 10.5 * TILE, y: 9.5 * TILE, dir: { x: 0, y: 1 }, path: [], target: null,
+      x: 10.5 * TILE, y: 9.5 * TILE, dir: { x: 0, y: 1 }, path: [], cmd: null, queue: [],
       hands: [], tickets: [], leading: null, trail: [], walkT: 0, moving: false, retries: 0,
     };
     cook = { x: 7 * TILE, y: 2.4 * TILE, walkT: 0, moving: false, dir: { x: 0, y: 1 } };
@@ -323,7 +325,7 @@
       g.members.forEach((m, k) => { m.tx = 2.5 * TILE + QOFF[g.size][k]; m.ty = sy + (k % 2 ? 3 : -3); });
     });
 
-    const mul = patienceMul() * (1 + 0.06 * (G.day - 1));
+    const mul = patienceMul() * (1 + 0.06 * (G.day - 1)) / PATIENCE;
     const followSpeed = playerSpeed() * 1.1;
 
     for (const g of G.groups) {
@@ -632,13 +634,12 @@
 
   const playerTile = () => ({ x: clamp(Math.floor(player.x / TILE), 0, COLS - 1), y: clamp(Math.floor(player.y / TILE), 0, ROWS - 1) });
 
-  function goTo(goals, target) {
+  function goTo(goals) {
     const s = playerTile();
     const path = bfs(s.x, s.y, goals, walkP);
     if (!path) { toast('Туда не пройти'); return false; }
     const pts = path.length ? smoothPath({ x: player.x, y: player.y }, path, walkP, PR) : [{ x: (s.x + 0.5) * TILE, y: (s.y + 0.5) * TILE }];
     player.path = pts;
-    player.target = target;
     const last = pts[pts.length - 1];
     marker = { x: last.x, y: last.y, t: 0 };
     return true;
@@ -649,7 +650,50 @@
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       if (walkP(x, y) && distToRect((x + 0.5) * TILE, (y + 0.5) * TILE, r) <= ACCESS) goals.add(tileKey(x, y));
     }
-    return goTo(goals, it);
+    return goTo(goals);
+  }
+
+  // ---------------------------------------------------------------------
+  //  Очередь поручений: клики запоминаются и выполняются по порядку.
+  //  Поручение — { it } (подойти и сделать действие) или { tile } (просто дойти).
+  // ---------------------------------------------------------------------
+  const groupWaiting = g => g.state === 'queue' || g.state === 'arriving';
+
+  function sameCmd(a, b) {
+    if (a.tile || b.tile) return !!(a.tile && b.tile && a.tile.x === b.tile.x && a.tile.y === b.tile.y);
+    return a.it.kind === b.it.kind && a.it.table === b.it.table && a.it.group === b.it.group;
+  }
+
+  function enqueue(cmd) {
+    const p = player;
+    const prev = p.queue.length ? p.queue[p.queue.length - 1] : p.cmd;
+    if (prev && sameCmd(prev, cmd)) return;   // двойной клик по тому же месту
+    if (p.queue.length >= MAX_QUEUE) { toast(`Официант помнит не больше ${MAX_QUEUE} поручений`); Sound.play('nope'); return; }
+    p.queue.push(cmd);
+    if (!p.cmd) nextCommand();
+  }
+
+  function nextCommand() {
+    const p = player;
+    p.cmd = null;
+    p.retries = 0;
+    while (p.queue.length) {
+      const c = p.queue.shift();
+      if (c.tile) {
+        if (goTo(new Set([tileKey(c.tile.x, c.tile.y)]))) { p.cmd = c; return; }
+        continue;
+      }
+      if (c.it.kind === 'group' && !groupWaiting(c.it.group)) { toast('Эти гости уже не ждут'); continue; }
+      if (inRange(c.it)) { doInteract(c.it); continue; }
+      if (goToInteractable(c.it)) { p.cmd = c; return; }
+    }
+  }
+
+  function clearQueue() {
+    player.queue = [];
+    player.cmd = null;
+    player.path = [];
+    marker = null;
   }
 
   // =====================================================================
@@ -688,7 +732,7 @@
     let ky = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
     const ox = p.x, oy = p.y;
     if (kx || ky) {
-      p.path = []; p.target = null; marker = null;
+      if (p.cmd || p.queue.length) clearQueue();
       const l = Math.hypot(kx, ky); kx /= l; ky /= l;
       const nx = p.x + kx * sp * dt;
       if (!collides(nx, p.y, PR)) p.x = nx;
@@ -703,12 +747,16 @@
         if (d <= step) { p.x = n.x; p.y = n.y; p.path.shift(); step -= d; }
         else { p.x += dx / d * step; p.y += dy / d * step; step = 0; }
       }
-      if (!p.path.length && p.target) {
-        const t = p.target;
-        p.target = null;
-        if (inRange(t)) { p.retries = 0; doInteract(t); }
-        else if (t.kind === 'group' && p.retries < 3) { p.retries++; goToInteractable(t); }
-        else p.retries = 0;
+    }
+    if (!p.path.length && p.cmd) {
+      const it = p.cmd.it;
+      if (it && !inRange(it) && it.kind === 'group' && groupWaiting(it.group) && p.retries < 3) {
+        // очередь у входа сдвинулась — догоняем гостей
+        p.retries++;
+        goToInteractable(it);
+      } else {
+        if (it && inRange(it)) doInteract(it);
+        nextCommand();
       }
     }
     p.moving = Math.hypot(p.x - ox, p.y - oy) > 0.01;
@@ -1229,6 +1277,29 @@
     ctx.fillText(txt, lx, ly + 0.5);
   }
 
+  // номера запомненных поручений на карте
+  function drawQueue(now) {
+    const cmds = player.cmd ? [player.cmd, ...player.queue] : player.queue;
+    const used = {};
+    cmds.forEach((c, i) => {
+      let x, y, key;
+      if (c.tile) {
+        x = (c.tile.x + 0.5) * TILE; y = (c.tile.y + 0.5) * TILE; key = 't' + c.tile.x + ',' + c.tile.y;
+      } else {
+        const r = rectOf(c.it);
+        x = (r.x + r.w) * TILE - 8; y = (r.y + r.h) * TILE - 8;
+        key = c.it.kind + (c.it.table ? c.it.table.num : '') + (c.it.group ? c.it.group.id : '');
+      }
+      const n = used[key] = (used[key] || 0) + 1;
+      x -= (n - 1) * 20;
+      const rad = i === 0 ? 9 + Math.sin(now * 6) : 9;
+      ctx.fillStyle = 'rgba(0,0,0,.3)'; circ(ctx, x, y + 1.5, rad); ctx.fill();
+      ctx.fillStyle = i === 0 ? '#ffd166' : '#fff3c4'; circ(ctx, x, y, rad); ctx.fill();
+      ctx.strokeStyle = '#2b1d14'; ctx.lineWidth = 1.5; ctx.stroke();
+      label(ctx, String(i + 1), x, y + 0.5, 11, '#2b1d14', 800);
+    });
+  }
+
   function draw() {
     const now = performance.now() / 1000;
     ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
@@ -1252,6 +1323,7 @@
 
     drawParticles();
     for (const g of G.groups) drawGroupUI(g, now);
+    drawQueue(now);
     if (running && !paused) drawHighlight(now);
     drawFloats();
 
@@ -1356,6 +1428,8 @@
       <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> или стрелки — ходить</div>
       <div><kbd>E</kbd> / <kbd>Пробел</kbd> — действие рядом</div>
       <div>👆 Клик / тап по объекту — официант сам подойдёт и всё сделает</div>
+      <div>🔢 Кликай по нескольким местам подряд — официант запомнит и выполнит всё по очереди</div>
+      <div>Правый клик — отменить поручения</div>
       <div><kbd>Esc</kbd> — пауза</div>
     </div>`;
 
@@ -1502,14 +1576,14 @@
     lastInput = e.pointerType === 'touch' ? 'touch' : 'mouse';
     if (!running || paused || !G || G.over) return;
     const { x, y } = toWorld(e);
-    const it = interactableAt(x, y);
-    if (it) {
-      if (inRange(it)) { player.path = []; player.target = null; doInteract(it); }
-      else goToInteractable(it);
+    if (e.button === 2) {
+      if (player.cmd || player.queue.length) { clearQueue(); toast('Поручения отменены'); }
       return;
     }
+    const it = interactableAt(x, y);
+    if (it) { enqueue({ it }); return; }
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
-    if (walkP(tx, ty)) goTo(new Set([tileKey(tx, ty)]), null);
+    if (walkP(tx, ty)) enqueue({ tile: { x: tx, y: ty } });
   });
   canvas.addEventListener('pointermove', e => {
     if (e.pointerType !== 'mouse') return;
