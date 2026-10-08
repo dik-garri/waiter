@@ -45,3 +45,7 @@
 Прогресс сохраняется в `localStorage`.
 
 Запуск локально: `python3 -m http.server` и открыть http://localhost:8000
+
+---
+
+[Все проекты →](https://dik-garri.github.io/garry/)
