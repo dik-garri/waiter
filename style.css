@@ -354,3 +354,49 @@ details.howto[open] summary { margin-bottom: 10px; }
 @media (orientation: portrait) and (max-width: 700px) {
   #rotate { display: block; }
 }
+
+/* Широкий экран (ноутбук, телефон боком): панели слева, поле игры на всю высоту.
+   На экранах ближе к 4:3 (iPad) выгоднее оставить панели сверху и снизу. */
+@media (min-aspect-ratio: 8/5) {
+  #app {
+    --side: 200px;
+    display: grid;
+    grid-template-columns: var(--side) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas: "hud stage" "hint stage";
+  }
+  #hud {
+    grid-area: hud;
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    min-height: 0;
+    overflow-y: auto;
+    border-bottom: 0;
+    border-right: 2px solid var(--line);
+    padding: max(10px, env(safe-area-inset-top)) 10px 10px max(10px, env(safe-area-inset-left));
+  }
+  #stage { grid-area: stage; }
+  #hint {
+    grid-area: hint;
+    border-right: 2px solid var(--line);
+    text-align: left;
+    font-size: 14px;
+    line-height: 1.35;
+    padding: 10px 12px max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  .goal { flex: 1; min-width: 0; }
+  .hands { flex-wrap: wrap; }
+  .btns { margin: auto 0 0; }
+  .btns button { flex: 1; }
+}
+
+/* телефон боком: колонка поуже и плотнее */
+@media (min-aspect-ratio: 8/5) and (max-height: 520px) {
+  #app { --side: 150px; }
+  #hud { gap: 5px; }
+  .stat { padding: 4px 8px; font-size: 13px; }
+  .slot { width: 32px; height: 28px; font-size: 15px; }
+  .btns button { height: 32px; font-size: 15px; }
+  #hint { font-size: 12px; }
+}
