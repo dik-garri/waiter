@@ -1443,8 +1443,40 @@
   // =====================================================================
   //  Экраны
   // =====================================================================
-  function showOverlay(html) { overlay.innerHTML = html; overlay.classList.remove('hidden'); }
-  function hideOverlay() { overlay.classList.add('hidden'); overlay.innerHTML = ''; }
+  let onStartScreen = false;
+  function showOverlay(html) { onStartScreen = false; overlay.innerHTML = html; overlay.classList.remove('hidden'); }
+  function hideOverlay() { onStartScreen = false; overlay.classList.add('hidden'); overlay.innerHTML = ''; }
+
+  // ---- установка как приложение (PWA) ----
+  const STANDALONE = window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
+  const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  let installPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installPrompt = e;
+    if (onStartScreen) showStart();
+  });
+  window.addEventListener('appinstalled', () => { installPrompt = null; if (onStartScreen) showStart(); });
+
+  function installHtml() {
+    if (STANDALONE) return '';
+    if (installPrompt) return '<button class="btn" id="bInstall">📲 Установить</button>';
+    return '';
+  }
+  function bindInstall() {
+    const b = $('bInstall');
+    if (!b) return;
+    b.onclick = async () => {
+      const prompt = installPrompt;
+      if (!prompt) return;
+      installPrompt = null;
+      prompt.prompt();
+      try { await prompt.userChoice; } catch (e) { /* ignore */ }
+      if (onStartScreen) showStart();
+    };
+  }
+  const iosInstallHint = () => (IOS && !STANDALONE
+    ? '<div class="meta">📲 Чтобы играть как в приложении: «Поделиться» → «На экран „Домой“»</div>' : '');
 
   const HOWTO = `
     <ol class="steps">
@@ -1494,10 +1526,13 @@
         <p class="sub">Симулятор ресторана: принимай заказы, носи блюда и собирай чаевые</p>
         ${HOWTO}
         ${diffPicker()}
-        <div class="row"><button class="btn primary" id="bPlay">▶ ${cont ? 'Продолжить — день ' + save.day : 'Начать смену'}</button></div>
+        <div class="row"><button class="btn primary" id="bPlay">▶ ${cont ? 'Продолжить — день ' + save.day : 'Начать смену'}</button>${installHtml()}</div>
         <div class="meta">${cont ? `💰 Кошелёк: $${save.wallet} · <a id="bReset">Начать заново</a>` : 'Прогресс сохраняется в браузере'}</div>
+        ${iosInstallHint()}
       </div>`);
+    onStartScreen = true;
     $('bPlay').onclick = () => { Sound.unlock(); startDay(); };
+    bindInstall();
     bindDiffPicker(showStart);
     const reset = $('bReset');
     if (reset) {
@@ -1704,6 +1739,11 @@
   $('hint').textContent = 'Нажми «Начать смену», чтобы открыть ресторан';
   showStart();
   requestAnimationFrame(frame);
+
+  // офлайн-режим и установка на домашний экран
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { /* без офлайна */ }));
+  }
 
   // для отладки из консоли
   window.__waiter = { get G() { return G; }, get player() { return player; }, get tables() { return tables; }, startDay, endDay: () => G && endDay() };
