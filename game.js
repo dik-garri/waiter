@@ -69,6 +69,7 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const tileKey = (x, y) => y * COLS + x;
   const $ = id => document.getElementById(id);
+  const TOUCH = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 
   function distToRect(px, py, r) {
     const x0 = r.x * TILE, y0 = r.y * TILE, x1 = (r.x + r.w) * TILE, y1 = (r.y + r.h) * TILE;
@@ -717,6 +718,12 @@
     marker = null;
   }
 
+  function cancelQueue() {
+    if (!player || (!player.cmd && !player.queue.length)) return;
+    clearQueue();
+    toast('Поручения отменены');
+  }
+
   // =====================================================================
   //  Обновление
   // =====================================================================
@@ -1359,7 +1366,7 @@
   // =====================================================================
   const hud = {
     day: $('hudDay'), clock: $('hudClock'), money: $('hudMoney'), goal: $('hudGoal'),
-    goalBar: $('hudGoalBar'), angry: $('hudAngry'), hands: $('hudHands'), hint: $('hint'),
+    goalBar: $('hudGoalBar'), angry: $('hudAngry'), hands: $('hudHands'), hint: $('hint'), queue: $('btnQueue'),
   };
   let hudTimer = 0, lastHands = '';
 
@@ -1392,6 +1399,9 @@
     if (player.tickets.length) html += `<div class="ticket">📝 ×${player.tickets.length}</div>`;
     if (html !== lastHands) { hud.hands.innerHTML = html; lastHands = html; }
     hud.hint.textContent = computeHint();
+    const nq = (player.cmd ? 1 : 0) + player.queue.length;
+    hud.queue.hidden = !nq;
+    if (nq) hud.queue.textContent = `✖ ${nq}`;
   }
 
   function computeHint() {
@@ -1445,13 +1455,17 @@
       <li><span>🍽️</span>Убери грязную посуду и отнеси её в мойку</li>
       <li><span>💳</span>Получи оплату — чем довольнее гости, тем больше чаевые</li>
     </ol>
-    <div class="controls">
+    <div class="controls">${TOUCH ? `
+      <div>👆 Нажми на гостей, стол, раздачу или мойку — официант сам подойдёт и всё сделает</div>
+      <div>🔢 Нажимай на несколько мест подряд — официант запомнит и выполнит всё по очереди</div>
+      <div>✖ Кнопка вверху справа — отменить поручения</div>
+      <div>⏸ — пауза</div>` : `
       <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> или стрелки — ходить</div>
       <div><kbd>E</kbd> / <kbd>Пробел</kbd> — действие рядом</div>
-      <div>👆 Клик / тап по объекту — официант сам подойдёт и всё сделает</div>
+      <div>👆 Клик по объекту — официант сам подойдёт и всё сделает</div>
       <div>🔢 Кликай по нескольким местам подряд — официант запомнит и выполнит всё по очереди</div>
-      <div>Правый клик — отменить поручения</div>
-      <div><kbd>Esc</kbd> — пауза</div>
+      <div>Правый клик или ✖ вверху — отменить поручения</div>
+      <div><kbd>Esc</kbd> — пауза</div>`}
     </div>`;
 
   function diffPicker() {
@@ -1617,10 +1631,7 @@
     lastInput = e.pointerType === 'touch' ? 'touch' : 'mouse';
     if (!running || paused || !G || G.over) return;
     const { x, y } = toWorld(e);
-    if (e.button === 2) {
-      if (player.cmd || player.queue.length) { clearQueue(); toast('Поручения отменены'); }
-      return;
-    }
+    if (e.button === 2) { cancelQueue(); return; }
     const it = interactableAt(x, y);
     if (it) { enqueue({ it }); return; }
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
@@ -1636,6 +1647,12 @@
   canvas.addEventListener('contextmenu', e => e.preventDefault());
 
   $('btnPause').onclick = () => { if (running) setPaused(!paused); };
+  $('btnQueue').onclick = () => { if (running && !paused) cancelQueue(); };
+
+  // iOS включает звук только по «настоящему» касанию; жест масштабирования в Safari гасим вручную
+  ['touchend', 'click'].forEach(ev => window.addEventListener(ev, () => Sound.unlock(), { passive: true }));
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  document.addEventListener('dblclick', e => e.preventDefault());
   const btnSound = $('btnSound');
   function syncSoundBtn() { btnSound.textContent = Sound.on ? '🔊' : '🔇'; }
   btnSound.onclick = () => {

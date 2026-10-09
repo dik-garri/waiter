@@ -24,11 +24,14 @@ html, body {
   font-family: Rubik, system-ui, -apple-system, "Segoe UI", sans-serif;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
-button { font-family: inherit; }
+button { font-family: inherit; touch-action: manipulation; }
 
 #app {
   display: flex;
@@ -44,6 +47,8 @@ button { font-family: inherit; }
   gap: 8px;
   padding: 8px 12px;
   padding-top: max(8px, env(safe-area-inset-top));
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
   background: var(--bar);
   border-bottom: 2px solid var(--line);
   flex-wrap: wrap;
@@ -101,6 +106,7 @@ button { font-family: inherit; }
   font-size: 17px; cursor: pointer;
 }
 .btns button:hover { background: #4a3829; }
+.btns button.queue { width: auto; padding: 0 10px; font-size: 15px; font-weight: 700; background: #6b3a2a; }
 
 /* ---------- Stage ---------- */
 #stage {
@@ -123,6 +129,8 @@ canvas {
 #hint {
   padding: 9px 14px;
   padding-bottom: max(9px, env(safe-area-inset-bottom));
+  padding-left: max(14px, env(safe-area-inset-left));
+  padding-right: max(14px, env(safe-area-inset-right));
   text-align: center;
   background: var(--bar);
   border-top: 2px solid var(--line);
@@ -162,6 +170,8 @@ canvas {
   -webkit-backdrop-filter: blur(4px);
   z-index: 10;
   overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 .overlay.hidden { display: none; }
 
@@ -284,6 +294,15 @@ kbd {
   .shop { grid-template-columns: 1fr; }
   .panel { padding: 20px 16px; }
   .panel h1 { font-size: 28px; }
+}
+
+/* сенсорные экраны (планшеты): крупнее зоны нажатия */
+@media (pointer: coarse) {
+  .btns button { width: 46px; height: 42px; font-size: 20px; }
+  .btns button.queue { font-size: 17px; }
+  .btn { padding: 15px 26px; }
+  .diff-row button { padding: 9px 4px; }
+  .card button { padding: 11px 14px; }
 }
 
 #rotate {
