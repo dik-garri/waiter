@@ -296,6 +296,43 @@ kbd {
   .panel h1 { font-size: 28px; }
 }
 
+/* ранг ресторана */
+.rank {
+  display: flex; align-items: center; gap: 12px;
+  background: #f6ead9; border-radius: 14px; padding: 10px 14px;
+  margin-bottom: 14px;
+}
+.rank-ic { font-size: 34px; }
+.rank-info { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.rank-info b { font-size: 17px; }
+.rank-info small { color: #7a6352; font-size: 12px; }
+.rank .bar { background: #e2cfb6; height: 8px; }
+.rankup {
+  margin: 14px 0; padding: 12px 14px; border-radius: 14px;
+  background: linear-gradient(135deg, #ffe8a3, #ffd166); color: var(--ink);
+  text-align: center; font-size: 16px;
+}
+.rankup small { display: block; margin-top: 4px; font-size: 13px; color: #5a4535; }
+
+/* магазин */
+.tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.tabs button {
+  flex: 1; border: 0; border-radius: 12px; padding: 10px 8px; cursor: pointer;
+  background: #f1e3cf; color: var(--ink); font-size: 15px; font-weight: 700;
+}
+.tabs button.on { background: var(--ink); color: #fff8ee; }
+.panel h4 { margin: 12px 0 8px; font-size: 15px; color: #5a4535; }
+.card.locked { opacity: .6; }
+.card.worn { box-shadow: inset 0 0 0 2px var(--ok); }
+.sw { display: inline-block; width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(0,0,0,.15); vertical-align: middle; }
+
+details.howto { margin-bottom: 14px; }
+details.howto summary {
+  cursor: pointer; font-weight: 700; padding: 8px 12px; border-radius: 12px;
+  background: #f1e3cf; list-style-position: inside;
+}
+details.howto[open] summary { margin-bottom: 10px; }
+
 /* сенсорные экраны (планшеты): крупнее зоны нажатия */
 @media (pointer: coarse) {
   .btns button { width: 46px; height: 42px; font-size: 20px; }
@@ -303,6 +340,7 @@ kbd {
   .btn { padding: 15px 26px; }
   .diff-row button { padding: 9px 4px; }
   .card button { padding: 11px 14px; }
+  .tabs button { padding: 13px 8px; }
 }
 
 #rotate {

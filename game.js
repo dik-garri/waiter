@@ -21,6 +21,9 @@
     { id: 'soup', name: 'Суп', e: '🍲', price: 11, cook: 5, day: 3 },
     { id: 'sushi', name: 'Суши', e: '🍣', price: 20, cook: 9, day: 4 },
     { id: 'ribs', name: 'Рёбрышки', e: '🍖', price: 24, cook: 11, day: 5 },
+    { id: 'taco', name: 'Тако', e: '🌮', price: 16, cook: 6, day: 6 },
+    { id: 'steak', name: 'Стейк', e: '🥩', price: 28, cook: 12, day: 7 },
+    { id: 'lobster', name: 'Лобстер', e: '🦞', price: 34, cook: 13, day: 8 },
   ];
 
   const UPGRADES = [
@@ -30,7 +33,50 @@
     { id: 'menu', e: '📜', name: 'Красивое меню', desc: 'Быстрее выбирают, чаевые +20%', max: 2, cost: [90, 200] },
     { id: 'tray', e: '🍽️', name: 'Большой поднос', desc: '+1 место в руках', max: 1, cost: [220] },
     { id: 'tables', e: '🪑', name: 'Новый стол', desc: '+1 стол в зале', max: 2, cost: [160, 320] },
+    { id: 'host', e: '🙋', name: 'Хостес у входа', desc: 'Гости у входа ждут на 25% дольше', max: 2, cost: [100, 220] },
+    { id: 'decor', e: '💡', name: 'Уютный интерьер', desc: 'Чаевые +15%', max: 3, cost: [90, 190, 330] },
+    { id: 'drinks', e: '🍹', name: 'Напитки от бара', desc: 'Гости за столом на 20% терпеливее', max: 2, cost: [130, 280], rank: 1 },
+    { id: 'ads', e: '📣', name: 'Реклама', desc: 'Гости приходят на 15% чаще', max: 2, cost: [120, 260], rank: 1 },
+    { id: 'prices', e: '⭐', name: 'Фирменные блюда', desc: 'Цены в меню +10%', max: 3, cost: [160, 320, 500], rank: 2 },
+    { id: 'busboy', e: '🧹', name: 'Уборщик', desc: 'Сам убирает грязные столы', max: 1, cost: [420], rank: 3 },
   ];
+
+  // Ранг ресторана растёт с заработком за всё время и открывает новые покупки
+  const RANKS = [
+    { e: '🥪', name: 'Закусочная', at: 0, bonus: 0 },
+    { e: '☕', name: 'Кафе', at: 250, bonus: 50 },
+    { e: '🥐', name: 'Бистро', at: 700, bonus: 100 },
+    { e: '🍷', name: 'Ресторан', at: 1500, bonus: 150 },
+    { e: '🏅', name: 'Гурман', at: 3000, bonus: 250 },
+    { e: '🌟', name: 'Звезда Мишлен', at: 6000, bonus: 400 },
+  ];
+
+  // Гардероб официанта и оформление зала
+  const WARDROBE = [
+    { slot: 'outfit', title: 'Униформа', items: [
+      { id: 'classic', name: 'Классика', color: '#22223b', cost: 0 },
+      { id: 'wine', name: 'Бордо', color: '#7b1e3a', cost: 60 },
+      { id: 'forest', name: 'Изумруд', color: '#1b6a4f', cost: 60 },
+      { id: 'sky', name: 'Небесный', color: '#2b6cb0', cost: 60 },
+      { id: 'berry', name: 'Ягодный', color: '#c2185b', cost: 80 },
+      { id: 'gold', name: 'Золотой', color: '#b8860b', cost: 300, rank: 4 },
+    ] },
+    { slot: 'hat', title: 'Головной убор', items: [
+      { id: 'none', name: 'Без шапки', e: '', cost: 0 },
+      { id: 'cap', name: 'Кепка', e: '🧢', cost: 50 },
+      { id: 'bow', name: 'Бантик', e: '🎀', cost: 50 },
+      { id: 'sunhat', name: 'Шляпка', e: '👒', cost: 90 },
+      { id: 'tophat', name: 'Цилиндр', e: '🎩', cost: 140, rank: 2 },
+      { id: 'crown', name: 'Корона', e: '👑', cost: 400, rank: 4 },
+    ] },
+    { slot: 'floor', title: 'Пол в зале', items: [
+      { id: 'oak', name: 'Дуб', cost: 0, wood: ['#c48a55', '#bb8150', '#c99460', '#b57a49'] },
+      { id: 'maple', name: 'Светлый клён', cost: 120, wood: ['#e2bf8c', '#d9b37f', '#e8c897', '#d4ab74'] },
+      { id: 'walnut', name: 'Орех', cost: 120, wood: ['#94603e', '#8a5839', '#9e6944', '#835335'] },
+      { id: 'cherry', name: 'Вишня', cost: 180, rank: 3, wood: ['#b0603f', '#a65839', '#ba6a48', '#9c5234'] },
+    ] },
+  ];
+  const BUSBOY_TIME = 5;          // за сколько секунд уборщик убирает стол
 
   const T = { FLOOR: 0, WALL: 1, KITCHEN: 2, COUNTER: 3, PASS: 4, SINK: 5, TABLE: 6, CHAIR: 7, PLANT: 8, DOOR: 9, BAR: 10, QUEUE: 11 };
   const TABLE_POS = [{ x: 5, y: 6 }, { x: 11, y: 6 }, { x: 5, y: 11 }, { x: 11, y: 11 }, { x: 17, y: 6 }, { x: 17, y: 11 }];
@@ -82,11 +128,21 @@
   //  Сохранение
   // =====================================================================
   const SAVE_KEY = 'waiter-save-v1';
-  const defaultSave = () => ({ day: 1, wallet: 0, best: 0, up: {} });
+  const defaultSave = () => ({
+    day: 1, wallet: 0, best: 0, up: {},
+    total: 0, owned: [], look: { outfit: 'classic', hat: 'none', floor: 'oak' },
+  });
+  const spentOnUpgrades = up => UPGRADES.reduce((sum, u) => sum + u.cost.slice(0, up[u.id] || 0).reduce((a, b) => a + b, 0), 0);
   function loadSave() {
     try {
       const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-      if (s && s.day) return Object.assign(defaultSave(), s);
+      if (s && s.day) {
+        const out = Object.assign(defaultSave(), s);
+        out.look = Object.assign(defaultSave().look, s.look);
+        // старые сохранения: заработок за всё время = кошелёк + потраченное на улучшения
+        if (s.total == null) out.total = out.wallet + spentOnUpgrades(out.up);
+        return out;
+      }
     } catch (e) { /* приватный режим и т.п. */ }
     return defaultSave();
   }
@@ -108,6 +164,19 @@
   const cookMul = () => (1 - 0.2 * lvl('chef')) * diff().cook;
   const patienceMul = () => 1 - 0.15 * lvl('music');
   const maxHands = () => 2 + lvl('tray');
+  const tipMul = () => (1 + 0.2 * lvl('menu')) * (1 + 0.15 * lvl('decor'));
+  function decayMul(state) {
+    if (state === 'queue' || state === 'arriving') return 1 - 0.25 * lvl('host');
+    if (state === 'ordering' || state === 'waitingFood' || state === 'dirty' || state === 'bill') return 1 - 0.2 * lvl('drinks');
+    return 1;
+  }
+
+  const rankIdx = () => { let i = 0; while (i + 1 < RANKS.length && save.total >= RANKS[i + 1].at) i++; return i; };
+  const rankOk = item => !item.rank || rankIdx() >= item.rank;
+  function lookItem(slot) {
+    const items = WARDROBE.find(w => w.slot === slot).items;
+    return items.find(i => i.id === save.look[slot]) || items[0];
+  }
   const dayGoal = d => Math.round((110 + 65 * (d - 1)) * diff().goal / 5) * 5;
 
   // =====================================================================
@@ -363,7 +432,7 @@
 
       const rate = DECAY[g.state];
       if (rate) {
-        g.mood -= rate * mul * dt;
+        g.mood -= rate * mul * decayMul(g.state) * dt;
         if (g.mood <= 0) { g.mood = 0; walkout(g); continue; }
       }
 
@@ -464,7 +533,8 @@
     const dishes = g.members.map(() => pick(menu));
     const cookTime = (Math.max(...dishes.map(d => d.cook)) + 1.5 * (dishes.length - 1)) * cookMul();
     const o = {
-      id: G.uid++, group: g, table: g.table, dishes, total: dishes.reduce((s, d) => s + d.price, 0),
+      id: G.uid++, group: g, table: g.table, dishes,
+      total: Math.round(dishes.reduce((s, d) => s + d.price, 0) * (1 + 0.1 * lvl('prices'))),
       status: 'ticket', cookTime, timer: cookTime, orphan: false, readyAt: 0,
     };
     g.order = o;
@@ -509,10 +579,10 @@
     addFloat(c.x, c.y - 50, '😋 Спасибо!', '#fff', 14);
   }
 
-  function clearTable(t) {
-    player.hands.push({ type: 'dirty', num: t.num });
+  function cleanTable(t) {
     t.dirty = false;
     t.dirtySeats = [];
+    t.cleanT = null;
     if (t.group && t.group.state === 'dirty') {
       t.group.state = 'bill';
       t.group.mood = Math.min(100, t.group.mood + 5);
@@ -520,9 +590,14 @@
     Sound.play('clink');
   }
 
+  function clearTable(t) {
+    player.hands.push({ type: 'dirty', num: t.num });
+    cleanTable(t);
+  }
+
   function takePayment(g) {
     const base = g.order.total;
-    const tip = Math.round(base * 0.35 * (g.mood / 100) * (1 + 0.2 * lvl('menu')));
+    const tip = Math.round(base * 0.35 * (g.mood / 100) * tipMul());
     const sum = base + tip;
     G.earned += sum; G.tips += tip; G.served += g.size;
     const c = tableCenter(g.table);
@@ -734,6 +809,7 @@
     updatePlayer(dt);
     updateGroups(dt);
     updateKitchen(dt);
+    updateBusboy(dt);
     updateFx(dt);
     if (G.closing && G.groups.length === 0) endDay();
   }
@@ -750,7 +826,7 @@
     if (G.spawnTimer <= 0) {
       spawnGroup();
       const f = Math.pow(0.9, G.day - 1);
-      G.spawnTimer = rand(Math.max(4, 11 * f), Math.max(6.5, 16 * f)) * diff().spawn;
+      G.spawnTimer = rand(Math.max(4, 11 * f), Math.max(6.5, 16 * f)) * diff().spawn * (1 - 0.15 * lvl('ads'));
     }
   }
 
@@ -828,6 +904,21 @@
     });
   }
 
+  // уборщик (улучшение) сам уносит грязную посуду со столов
+  function updateBusboy(dt) {
+    if (!lvl('busboy')) return;
+    for (const t of tables) {
+      if (!t.dirty) continue;
+      if (t.cleanT == null) t.cleanT = BUSBOY_TIME;
+      t.cleanT -= dt;
+      if (t.cleanT <= 0) {
+        cleanTable(t);
+        const c = tableCenter(t);
+        addFloat(c.x, c.y - 40, '🧹 Чисто!', '#b7f0c1', 13);
+      }
+    }
+  }
+
   function updateFx(dt) {
     for (const f of G.floats) { f.t += dt; f.y -= 24 * dt; }
     G.floats = G.floats.filter(f => f.t < 1.7);
@@ -878,7 +969,7 @@
     g.scale(2, 2);
 
     // деревянный пол
-    const WOOD = ['#c48a55', '#bb8150', '#c99460', '#b57a49'];
+    const WOOD = lookItem('floor').wood;
     for (let r = 0; r < ROWS * 2; r++) {
       const y = r * 20;
       let x = -((r * 37) % 80), i = r;
@@ -1096,6 +1187,7 @@
       rr(ctx, hx - 7, hy - 10, 14, 6, 2); ctx.fill(); ctx.stroke();
       circ(ctx, hx - 4, hy - 13, 5); ctx.fill(); circ(ctx, hx + 4, hy - 13, 5); ctx.fill(); circ(ctx, hx, hy - 15, 5.5); ctx.fill();
     }
+    if (o.hat) emoji(ctx, o.hat, hx, hy - 9, 16);
   }
 
   const WAITER_LOOK = { shirt: '#22223b', skin: '#f1c27d', hair: '#3d2b1f' };
@@ -1129,7 +1221,8 @@
 
   function drawPlayer() {
     const p = player;
-    drawPerson(p.x, p.y, WAITER_LOOK, { moving: p.moving, walkT: p.walkT, dir: p.dir, waiter: true });
+    const look = { ...WAITER_LOOK, shirt: lookItem('outfit').color };
+    drawPerson(p.x, p.y, look, { moving: p.moving, walkT: p.walkT, dir: p.dir, waiter: true, hat: lookItem('hat').e });
     const spots = [[15, 0], [-15, 0], [0, -24]];
     p.hands.forEach((h, i) => { const s = spots[i] || spots[2]; drawHandItem(h, p.x + s[0], p.y + s[1]); });
     if (p.tickets.length) {
@@ -1218,6 +1311,11 @@
       }
       if (t.dirty) {
         t.dirtySeats.forEach(s => drawDirtyPlate((s.x + 0.5) * TILE, (s.y + 0.5) * TILE - s.side * 0.78 * TILE, 8));
+        if (t.cleanT != null) {
+          const c = tableCenter(t);
+          emoji(ctx, '🧹', c.x + 30, c.y - 6, 16 + Math.sin(now * 10) * 1.5);
+          bar(c.x + 18, c.y + 8, 24, 1 - t.cleanT / BUSBOY_TIME, '#69db7c');
+        }
       }
     }
     // подсветка свободных столов, когда ведём гостей
@@ -1415,7 +1513,9 @@
     if (hasDirty && freeHands() <= 0) return '🧽 Руки заняты — отнеси грязную посуду в мойку';
     const ready = G.orders.find(o => o.status === 'ready');
     if (ready && freeHands() > 0) return `🛎️ Заказ для стола №${ready.table.num} готов — забери на раздаче`;
-    const urgent = G.groups.filter(g => ['ordering', 'dirty', 'bill'].includes(g.state)).sort((a, b) => a.mood - b.mood)[0];
+    // столы, которые уже убирает уборщик, не подсказываем
+    const urgent = G.groups.filter(g => ['ordering', 'dirty', 'bill'].includes(g.state) && !(g.state === 'dirty' && g.table.cleanT != null))
+      .sort((a, b) => a.mood - b.mood)[0];
     if (urgent) {
       const n = urgent.table.num;
       if (urgent.state === 'ordering') return `✋ Стол №${n} готов сделать заказ`;
@@ -1423,7 +1523,7 @@
       return `💳 Стол №${n} ждёт счёт — прими оплату`;
     }
     if (hasDirty) return '🧽 Отнеси грязную посуду в мойку';
-    const dirtyT = tables.find(t => t.dirty && !t.group);
+    const dirtyT = tables.find(t => t.dirty && !t.group && t.cleanT == null);
     if (dirtyT) return `🧹 Убери стол №${dirtyT.num}`;
     if (G.groups.some(g => g.state === 'queue')) return '👋 Гости ждут у входа — подойди и проводи их за стол';
     if (G.orders.some(o => o.status === 'cooking')) return '👨‍🍳 Повар готовит… А пока — проверь зал';
@@ -1512,8 +1612,123 @@
 
   function bindDiffPicker(rerender) {
     overlay.querySelectorAll('[data-diff]').forEach(b => {
-      b.onclick = () => { setDiff(Number(b.dataset.diff)); Sound.unlock(); Sound.play('ding'); rerender(); };
+      b.onclick = () => { setDiff(Number(b.dataset.diff)); Sound.unlock(); Sound.play('ding'); refresh(rerender); };
     });
+  }
+
+  // перерисовать экран, не сбрасывая прокрутку (важно на планшете)
+  function refresh(render) {
+    const panel = overlay.querySelector('.panel'), top = panel ? panel.scrollTop : 0, otop = overlay.scrollTop;
+    render();
+    const np = overlay.querySelector('.panel');
+    if (np) np.scrollTop = top;
+    overlay.scrollTop = otop;
+  }
+
+  // ---- ранг ресторана ----
+  function rankHtml() {
+    const i = rankIdx(), r = RANKS[i], next = RANKS[i + 1];
+    const pct = next ? Math.min(100, (save.total - r.at) / (next.at - r.at) * 100) : 100;
+    return `
+      <div class="rank">
+        <div class="rank-ic">${r.e}</div>
+        <div class="rank-info">
+          <small>Ранг ресторана</small><b>${r.name}</b>
+          <div class="bar"><i style="width:${pct}%"></i></div>
+          <small>${next ? `Заработано $${save.total} из $${next.at} до ранга «${next.name}»` : `Заработано $${save.total} — это высший ранг!`}</small>
+        </div>
+      </div>`;
+  }
+
+  const unlocksAt = i => [...UPGRADES, ...WARDROBE.flatMap(w => w.items)]
+    .filter(x => x.rank === i).map(x => (x.e ? x.e + ' ' : '') + x.name);
+
+  // ---- магазин: улучшения и гардероб ----
+  let shopTab = 'up';
+  const lockedText = item => `🔒 Откроется на ранге «${RANKS[item.rank].name}»`;
+
+  function upgradeCard(u) {
+    const l = lvl(u.id), maxed = l >= u.max, locked = !maxed && !rankOk(u);
+    const cost = maxed ? 0 : u.cost[l], can = !locked && !maxed && save.wallet >= cost;
+    return `<div class="card ${maxed ? 'maxed' : ''} ${locked ? 'locked' : ''}">
+        <div class="ic">${u.e}</div>
+        <div class="info"><b>${u.name}</b><small>${locked ? lockedText(u) : u.desc}</small><div class="pips">${'●'.repeat(l)}${'○'.repeat(u.max - l)}</div></div>
+        <button data-buy="${u.id}" ${can ? '' : 'disabled'}>${locked ? '🔒' : maxed ? 'Макс.' : '$' + cost}</button>
+      </div>`;
+  }
+
+  function wardrobePreview(slot, it) {
+    if (slot === 'outfit') return `<i class="sw" style="background:${it.color}"></i>`;
+    if (slot === 'floor') return `<i class="sw" style="background:repeating-linear-gradient(0deg,${it.wood[0]} 0 7px,${it.wood[1]} 7px 14px,${it.wood[2]} 14px 21px)"></i>`;
+    return it.e || '🚫';
+  }
+
+  function wardrobeCard(slot, it) {
+    const owned = !it.cost || save.owned.includes(slot + ':' + it.id);
+    const worn = save.look[slot] === it.id, locked = !owned && !rankOk(it);
+    const wearWord = slot === 'floor' ? 'Выбрать' : 'Надеть', wornWord = slot === 'floor' ? 'Выбран' : 'Надето';
+    let btn = '$' + it.cost, can = save.wallet >= it.cost, sub = '';
+    if (worn) { btn = '✓'; can = false; sub = wornWord; }
+    else if (owned) { btn = wearWord; can = true; sub = it.cost ? 'Куплено' : ''; }
+    else if (locked) { btn = '🔒'; can = false; sub = lockedText(it); }
+    return `<div class="card ${worn ? 'worn' : ''} ${locked ? 'locked' : ''}">
+        <div class="ic">${wardrobePreview(slot, it)}</div>
+        <div class="info"><b>${it.name}</b><small>${sub}</small></div>
+        <button data-wear="${slot}:${it.id}" ${can ? '' : 'disabled'}>${btn}</button>
+      </div>`;
+  }
+
+  function shopHtml() {
+    const tabs = [['up', '⬆️ Улучшения'], ['look', '👔 Гардероб']]
+      .map(([id, t]) => `<button data-tab="${id}" class="${shopTab === id ? 'on' : ''}">${t}</button>`).join('');
+    const body = shopTab === 'up'
+      ? `<div class="shop">${UPGRADES.map(upgradeCard).join('')}</div>`
+      : WARDROBE.map(w => `<h4>${w.title}</h4><div class="shop">${w.items.map(it => wardrobeCard(w.slot, it)).join('')}</div>`).join('');
+    return `<h3>Магазин <span class="wallet">💰 $${save.wallet}</span></h3><div class="tabs">${tabs}</div>${body}`;
+  }
+
+  function bindShop(rerender) {
+    overlay.querySelectorAll('[data-tab]').forEach(b => {
+      b.onclick = () => { shopTab = b.dataset.tab; refresh(rerender); };
+    });
+    overlay.querySelectorAll('[data-buy]').forEach(b => {
+      b.onclick = () => {
+        const u = UPGRADES.find(x => x.id === b.dataset.buy), l = lvl(u.id);
+        if (l >= u.max || !rankOk(u) || save.wallet < u.cost[l]) return;
+        save.wallet -= u.cost[l];
+        save.up[u.id] = l + 1;
+        writeSave();
+        Sound.play('coin');
+        refresh(rerender);
+      };
+    });
+    overlay.querySelectorAll('[data-wear]').forEach(b => {
+      b.onclick = () => {
+        const [slot, id] = b.dataset.wear.split(':');
+        const it = WARDROBE.find(w => w.slot === slot).items.find(x => x.id === id), key = slot + ':' + id;
+        if (it.cost && !save.owned.includes(key)) {
+          if (!rankOk(it) || save.wallet < it.cost) return;
+          save.wallet -= it.cost;
+          save.owned.push(key);
+          Sound.play('coin');
+        } else Sound.play('pick');
+        save.look[slot] = id;
+        writeSave();
+        if (slot === 'floor') bg = renderBackground();
+        refresh(rerender);
+      };
+    });
+  }
+
+  function showShop() {
+    showOverlay(`
+      <div class="panel wide">
+        ${rankHtml()}
+        ${shopHtml()}
+        <div class="row"><button class="btn primary" id="bBack">← Назад</button></div>
+      </div>`);
+    bindShop(showShop);
+    $('bBack').onclick = showStart;
   }
 
   function showStart() {
@@ -1524,20 +1739,25 @@
         <div class="logo">🍽️</div>
         <h1>Официант</h1>
         <p class="sub">Симулятор ресторана: принимай заказы, носи блюда и собирай чаевые</p>
-        ${HOWTO}
+        ${cont ? rankHtml() + `<details class="howto"><summary>Как играть</summary>${HOWTO}</details>` : HOWTO}
         ${diffPicker()}
-        <div class="row"><button class="btn primary" id="bPlay">▶ ${cont ? 'Продолжить — день ' + save.day : 'Начать смену'}</button>${installHtml()}</div>
+        <div class="row">
+          <button class="btn primary" id="bPlay">▶ ${cont ? 'Продолжить — день ' + save.day : 'Начать смену'}</button>
+          ${cont ? '<button class="btn" id="bShop">🛒 Магазин</button>' : ''}
+          ${installHtml()}
+        </div>
         <div class="meta">${cont ? `💰 Кошелёк: $${save.wallet} · <a id="bReset">Начать заново</a>` : 'Прогресс сохраняется в браузере'}</div>
         ${iosInstallHint()}
       </div>`);
     onStartScreen = true;
     $('bPlay').onclick = () => { Sound.unlock(); startDay(); };
+    if ($('bShop')) $('bShop').onclick = showShop;
     bindInstall();
     bindDiffPicker(showStart);
     const reset = $('bReset');
     if (reset) {
       reset.onclick = () => {
-        if (reset.dataset.armed) { save = defaultSave(); writeSave(); showStart(); }
+        if (reset.dataset.armed) { save = defaultSave(); writeSave(); bg = renderBackground(); showStart(); }
         else { reset.dataset.armed = '1'; reset.textContent = 'Точно? Нажми ещё раз'; }
       };
     }
@@ -1566,12 +1786,21 @@
     running = false;
     const goal = dayGoal(G.day), ok = G.earned >= goal, ratio = G.earned / goal;
     const stars = ratio >= 1.7 ? 3 : ratio >= 1.35 ? 2 : ok ? 1 : 0;
+    const rankBefore = rankIdx();
     save.wallet += G.earned;
+    save.total += G.earned;
+    const rankAfter = rankIdx();
+    let bonus = 0;
+    for (let i = rankBefore + 1; i <= rankAfter; i++) bonus += RANKS[i].bonus;
+    save.wallet += bonus;
     if (ok) save.day = G.day + 1;
     save.best = Math.max(save.best || 0, G.earned);
     writeSave();
-    Sound.play(ok ? 'win' : 'lose');
-    lastResult = { day: G.day, ok, stars, earned: G.earned, goal, tips: G.tips, served: G.served, walkouts: G.walkouts };
+    Sound.play(ok || bonus ? 'win' : 'lose');
+    lastResult = {
+      day: G.day, ok, stars, earned: G.earned, goal, tips: G.tips, served: G.served, walkouts: G.walkouts,
+      rankUp: rankAfter > rankBefore ? { from: rankBefore + 1, idx: rankAfter, bonus } : null,
+    };
     showSummary();
   }
 
@@ -1579,14 +1808,12 @@
     const r = lastResult;
     const starsHtml = [0, 1, 2].map(i => `<span class="${i < r.stars ? '' : 'off'}">★</span>`).join('');
     const nextDish = DISHES.find(d => d.day === save.day && r.ok);
-    const shop = UPGRADES.map(u => {
-      const l = lvl(u.id), maxed = l >= u.max, cost = maxed ? 0 : u.cost[l], can = !maxed && save.wallet >= cost;
-      return `<div class="card ${maxed ? 'maxed' : ''}">
-        <div class="ic">${u.e}</div>
-        <div class="info"><b>${u.name}</b><small>${u.desc}</small><div class="pips">${'●'.repeat(l)}${'○'.repeat(u.max - l)}</div></div>
-        <button data-buy="${u.id}" ${can ? '' : 'disabled'}>${maxed ? 'Макс.' : '$' + cost}</button>
-      </div>`;
-    }).join('');
+    let rankUp = '';
+    if (r.rankUp) {
+      const rk = RANKS[r.rankUp.idx], opened = [];
+      for (let i = r.rankUp.from; i <= r.rankUp.idx; i++) opened.push(...unlocksAt(i));
+      rankUp = `<div class="rankup">🎉 Новый ранг: ${rk.e} <b>${rk.name}</b>! Бонус <b>$${r.rankUp.bonus}</b>${opened.length ? `<small>Открыто в магазине: ${opened.join(', ')}</small>` : ''}</div>`;
+    }
     showOverlay(`
       <div class="panel wide">
         <h2>День ${r.day} завершён</h2>
@@ -1599,25 +1826,16 @@
           <div><b>${r.walkouts}</b><small>ушли недовольными</small></div>
         </div>
         ${nextDish ? `<p class="sub" style="margin:14px 0 0">Новое блюдо в меню: ${nextDish.e} <b>${nextDish.name}</b> — $${nextDish.price}</p>` : ''}
-        <h3>Улучшения <span class="wallet">💰 $${save.wallet}</span></h3>
-        <div class="shop">${shop}</div>
+        ${rankUp}
+        ${rankHtml()}
+        ${shopHtml()}
         ${diffPicker()}
         <div class="row">
           <button class="btn primary" id="bNext">${r.ok ? '▶ День ' + save.day : '↻ Повторить день ' + save.day}</button>
           <button class="btn" id="bMenu">Меню</button>
         </div>
       </div>`);
-    overlay.querySelectorAll('[data-buy]').forEach(b => {
-      b.onclick = () => {
-        const u = UPGRADES.find(x => x.id === b.dataset.buy), l = lvl(u.id);
-        if (l >= u.max || save.wallet < u.cost[l]) return;
-        save.wallet -= u.cost[l];
-        save.up[u.id] = l + 1;
-        writeSave();
-        Sound.play('coin');
-        showSummary();
-      };
-    });
+    bindShop(showSummary);
     bindDiffPicker(showSummary);
     $('bNext').onclick = () => startDay();
     $('bMenu').onclick = () => { G = null; showStart(); };
